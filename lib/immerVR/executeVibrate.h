@@ -9,7 +9,7 @@
 class ExecuteVibrate : public Execute {
 public:
 ExecuteVibrate(Hardware* hardware, executeParameter_t* executeParameter);
-void setExecuteByPattern(pattern_t pattern);
+void setExecuteByMode(mode_t mode);
 void setIdle(Hardware* hardware, executeParameter_t* executeParameter);
 void tick(Hardware* hardware, executeParameter_t* executeParameter);
 String getMeasurements(Hardware *hardware, executeParameter_t *executeParameter);

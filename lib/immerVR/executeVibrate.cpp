@@ -13,7 +13,7 @@ ExecuteVibrate::ExecuteVibrate(Hardware *hardware,
 }
 // these funcitons are called in tinterval timed timeslots (e.g. 200ms)
 
-void ExecuteVibrate::setExecuteByPattern(pattern_t pattern) {
+void ExecuteVibrate::setExecuteByMode(mode_t mode) {
   // switch (mode)
   if (pattern == IDLE) {
     _timerCallback = &ExecuteVibrate::_idle;
@@ -523,9 +523,6 @@ void ExecuteVibrate::_rain(Hardware *hardware, executeParameter_t *executeParame
   // intensity: intensity of actuation
   // interval:  on time in ms for impact
   // parameter: raindrops per minute
-
-  // impact on duration in ms
-  #define IMPACT_ON_DURATION 60
 
   // simple algorithm: only change state every IMPACT_ON_DURATION milliseconds
   //                    - turn off all actuators

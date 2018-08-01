@@ -5,22 +5,15 @@
 
 #define NUMBER_CHANNELS 5
 
-ExecuteEMS::ExecuteEMS(Hardware *hardware,
-                       executeParameter_t *executeParameter) {
-  _timerCallback = &ExecuteEMS::_idle;
-  executeParameter->intensity = 0;
+ExecuteEMS::ExecuteEMS(Hardware *hardware, executeParameter_t *executeParameter) {
+  this->executeParameter = executeParameter;
+  this->_hardware = hardware;
 
   for (uint8_t channel = 0; channel < NUMBER_CHANNELS; channel++) {
-    hardware->setPercent(executeParameter->address, channel, _OFF);
+    _hardware->setPercent(executeParameter->address, channel, _OFF);
   }
 
-  _mode = 8;
-  executeParameter->parameter = 8;
-
-  _intensity = new uint8_t[executeParameter->numberElements];
-  for (uint8_t element = 0; element < executeParameter->numberElements; element++) {
-    _intensity[element] = 0;
-  }
+  _emsMode = TENS1;
 
   _lastKeypressTimeMs = millis();
   _keyPresses = new uint8_t[KEY_PRESS_QUEUE_MAX];
@@ -28,59 +21,62 @@ ExecuteEMS::ExecuteEMS(Hardware *hardware,
   _lastKeypressIndex = 0;
   _currentKeypressIndex = 0;
 
-  _timerCallback = &ExecuteEMS::_direct;
+  _timerCallback = &ExecuteEMS::_continuous;
 }
 
-void ExecuteEMS::setExecuteByPattern(pattern_t pattern) {
+void ExecuteEMS::setExecuteByMode(mode_t mode) {
   // switch (mode)
-  if (pattern == IDLE) {
+  if (mode == IDLE) {
     _timerCallback = &ExecuteEMS::_idle;
-  } else if (pattern == DIRECT) {
-    _timerCallback = &ExecuteEMS::_direct;
-  } else if (pattern == RAIN) {
-    _timerCallback = &ExecuteEMS::_rain;
+  } else if (mode == CONTINUOUS) {
+    _timerCallback = &ExecuteEMS::_continuous;
+  } else if (mode == PULSE) {
+    _timerCallback = &ExecuteEMS::_pulse;
   } else {
 #ifdef DEBUG
-    Serial.println("ERROR: pattern not implemented");
+    Serial.println("ERROR: mode not implemented");
 #endif // DEBUG
     _timerCallback = &ExecuteEMS::_idle;
   }
+
+  executeParameter->mode = mode;
 }
 
-void ExecuteEMS::setIdle(Hardware *hardware,
-                         executeParameter_t *executeParameter) {
+void ExecuteEMS::setIdle() {
   executeParameter->updated = true;
-  executeParameter->pattern = IDLE;
+  executeParameter->mode = IDLE;
   _timerCallback = &ExecuteEMS::_idle;
   //_idle(hardware, executeParameter);
 }
 
-String ExecuteEMS::getMeasurements(Hardware* hardware, executeParameter_t *executeParameter) {
+String ExecuteEMS::getCurrentValues() {
+  // TODO
   return "";
 }
 
-void ExecuteEMS::tick(Hardware *hardware,
-                      executeParameter_t *executeParameter) {
-  (this->*_timerCallback)(hardware, executeParameter);
-  _executeKeypresses(hardware, executeParameter);
+void ExecuteEMS::tick() {
+  (this->*_timerCallback)();
+  _executeKeypresses();
 }
 
-void ExecuteEMS::_idle(Hardware *hardware,
-                       executeParameter_t *executeParameter) {
+
+void ExecuteEMS::_idle() {
   if (executeParameter->updated) {
-    for (uint8_t element = 0; element < executeParameter->numberElements; element++) {
+    for (element_t element; element < executeParameter->numberElements; element++) {
+      executeParameter->targetValues[element] = 0;
+
       // for now only having two elements is implemented
-      if (_intensity[element] < 0) {
+      if (executeParameter->currentValues[element] < 0) {
         if(element == 0) {
           _press(RIGHT);
         }
         else if(element == 1) {
           _press(LEFT);
         }
-        for (uint8_t times = 0; times < _intensity[element]; times++) {
+        for (uint8_t times = 0; times < executeParameter->currentValues[element]; times++) {
           _press(DOWN);
         }
-        _intensity[element] = 0;
+        executeParameter->currentValues[element] = 0;
       }
     }
 
@@ -88,40 +84,63 @@ void ExecuteEMS::_idle(Hardware *hardware,
   }
 }
 
-void ExecuteEMS::_direct(Hardware *hardware, executeParameter_t *executeParameter) {
+void ExecuteEMS::_continuous() {
   if (executeParameter->updated == true) {
-    if (executeParameter->parameter != _mode) {
+/*
+TODO
+
+    if (module->executeParameter->parameter != _mode) {
       _setMode(hardware, executeParameter);
     }
-
     if (executeParameter->mask == 1) {
       Serial.println("updating EMS module");
       _increaseOnTime();
       executeParameter->mask = 0;
     }
+*/
 
-    for (uint8_t element = 0; element < executeParameter->numberElements;
-         element++) {
-      if ((executeParameter->elementValues[element] - _intensity[element]) != 0) {
+    for (element_t element; element < executeParameter->numberElements; element++) {
+      if (executeParameter->currentValues[element] != executeParameter->targetValues[element]) {
         #ifdef DEBUG
         Serial.print("setting element: ");
         Serial.println(element);
         Serial.print("its external value is: ");
-        Serial.println(executeParameter->elementValues[element]);
+        Serial.println(executeParameter->currentValues[element]);
         Serial.print("its internal value is: ");
-        Serial.println(_intensity[element]);
+        Serial.println(executeParameter->targetValues[element]);
         #endif // DEBUG
-
-        _setIntensity(hardware, element, executeParameter);
       }
-
-      #ifdef DEBUG
-      Serial.println("DONE setting EMS value");
-      #endif // DEBUG
     }
+
+
+    _setIntensity(executeParameter->targetValues);
     executeParameter->updated = false;
   }
 }
+
+void ExecuteEMS::_pulse() {
+  if (executeParameter->repetitions > 0) {
+    if (millis() >= _pulseTimer) {
+      if (executeParameter->updated == true) {
+        _setIntensity(executeParameter->targetValues);
+        _pulseTimer = millis() + executeParameter->onDurationMs;
+        executeParameter->updated = false;
+      }
+      else {
+        _setIntensity(NULL);
+        _pulseTimer = millis() + executeParameter->intervalMs;
+        executeParameter->repetitions--;
+        executeParameter->updated = true;
+      }
+    }
+  }
+
+  else {
+    executeParameter->updated = false;
+    setIdle();
+  }
+}
+
 
 void ExecuteEMS::_increaseOnTime() {
   _press(MODE);
@@ -136,35 +155,7 @@ void ExecuteEMS::_increaseOnTime() {
   }
 }
 
-void ExecuteEMS::_rain(Hardware *hardware,
-                      executeParameter_t *executeParameter) {
-  // intensity: intensity value to set for thunder
-  // interval: on time
-  if (executeParameter->updated) {
-    for (uint8_t element = 0; element < executeParameter->numberElements; element++) {
-      executeParameter->elementValues[element] = executeParameter->intensity;
-      _setIntensity(hardware, element, executeParameter);
-    }
-
-    _onTime = millis() + executeParameter->intervalMs;
-    executeParameter->updated = false;
-  }
-  else {
-    if (millis() > _onTime) {
-      for (uint8_t element = 0; element < executeParameter->numberElements; element++) {
-        uint8_t elementIntensityValue = executeParameter->elementValues[element];
-        executeParameter->elementValues[element] = 0;
-        _setIntensity(hardware, element, executeParameter);
-        executeParameter->elementValues[element] = elementIntensityValue;
-      }
-
-      setIdle(hardware, executeParameter);
-    }
-  }
-}
-
-void ExecuteEMS::_setIntensity(Hardware *hardware, uint8_t element,
-                               executeParameter_t *executeParameter) {
+void ExecuteEMS::_setIntensity(value_t *values) {
   #ifdef DEBUG
   Serial.print("Setting element: ");
   Serial.print(element);
@@ -176,52 +167,72 @@ void ExecuteEMS::_setIntensity(Hardware *hardware, uint8_t element,
 #endif // DISPLAY
 */
 
-  if (element == 0) {
-    _press(LEFT);
-    _press(LEFT);
-  }
-  else if (element == 1) {
-    _press(RIGHT);
-    _press(RIGHT);
-  }
+  bool changed = false;
 
-  if ((executeParameter->elementValues[element] - _intensity[element]) >= 0) {
-    for (uint8_t times = 0;
-      times < (executeParameter->elementValues[element] - _intensity[element]); times++) {
-      _press(UP);
+  for (element_t element = 0; element < executeParameter->numberElements; element++) {
+    value_t value = 0;
+    if (values != NULL) {
+      value = values[element];
     }
-  } else {
-    for (uint8_t times = 0;
-      times < (_intensity[element] - executeParameter->elementValues[element]); times++) {
-      _press(DOWN);
+    if ((value - executeParameter->currentValues[element]) > 0) {
+      changed = true;
+      if (element == 0) {
+        _press(LEFT);
+        _press(LEFT);
+      }
+      else if (element == 1) {
+        _press(RIGHT);
+        _press(RIGHT);
+      }
+
+      for (uint8_t times = 0; times < (value - executeParameter->currentValues[element]); times++) {
+        _press(UP);
+      }
     }
+    else if ((value - executeParameter->currentValues[element]) < 0) {
+      changed = true;
+      if (element == 0) {
+        _press(LEFT);
+        _press(LEFT);
+      }
+      else if (element == 1) {
+        _press(RIGHT);
+        _press(RIGHT);
+      }
+
+      for (uint8_t times = 0; times < (executeParameter->currentValues[element] - value); times++) {
+        _press(DOWN);
+      }
+    }
+
+
+    #ifdef DEBUG
+    Serial.print(" to delta: ");
+    Serial.println(value - executeParameter->currentValues[element]);
+    #endif //DEBUG
+
+    executeParameter->currentValues[element] = value;
   }
 
-  #ifdef DEBUG
-  Serial.print(" to delta: ");
-  Serial.println(executeParameter->elementValues[element] - _intensity[element]);
-  #endif //DEBUG
-
-  _press(MODE);
-
-  _intensity[element] = executeParameter->elementValues[element];
+  if (changed == true) {
+    _press(MODE);
+  }
   executeParameter->updated = false;
 }
 
-void ExecuteEMS::_setMode(Hardware *hardware,
-                          executeParameter_t *executeParameter) {
+void ExecuteEMS::_setMode(emsMode_t emsMode) {
   // set to choose P - mode
   for (uint8_t times = 0; times < 4; times++) {
     _press(MODE);
   }
 
-  if ((executeParameter->parameter - _mode) >= 0) {
-    for (uint8_t times = 0; times < (executeParameter->parameter - _mode);
+  if ((emsMode - _emsMode) >= 0) {
+    for (uint8_t times = 0; times < (emsMode - _emsMode);
          times++) {
       _press(UP);
     }
   } else {
-    for (uint8_t times = 0; times < (_mode - executeParameter->parameter);
+    for (uint8_t times = 0; times < (_emsMode - emsMode);
          times++) {
       _press(DOWN);
     }
@@ -229,12 +240,14 @@ void ExecuteEMS::_setMode(Hardware *hardware,
 
   _press(MODE);
 
-  _mode = executeParameter->parameter;
+  _emsMode = emsMode;
 
-  _intensity[0] = 0;
-  _intensity[1] = 0;
+  for (element_t element = 0; element < executeParameter->numberElements; element++) {
+    executeParameter->currentValues[element] = 0;
+  }
 }
-void ExecuteEMS::_executeKeypresses(Hardware *hardware, executeParameter_t *executeParameter) {
+
+void ExecuteEMS::_executeKeypresses() {
   // nothing to do
   if (_currentKeypressIndex == _lastKeypressIndex) {
     return;
@@ -245,21 +258,21 @@ void ExecuteEMS::_executeKeypresses(Hardware *hardware, executeParameter_t *exec
   // 0ms++
   if((deltaTime < 100) && _keyPressState == 0) {
     for (uint8_t channel = 0; channel < NUMBER_CHANNELS; channel++) {
-      hardware->setPercent(executeParameter->address, channel, _ON);
+      _hardware->setPercent(executeParameter->address, channel, _ON);
     }
     _keyPressState = 1;
   }
   // 100ms++
   else if((deltaTime < 200) && _keyPressState == 1) {
-    hardware->setPercent(executeParameter->address, _keyPresses[_currentKeypressIndex], _OFF);
+    _hardware->setPercent(executeParameter->address, _keyPresses[_currentKeypressIndex], _OFF);
     _keyPressState = 2;
   }
   // 200ms++
   else if(deltaTime > 200) {
-    hardware->setPercent(executeParameter->address, _keyPresses[_currentKeypressIndex], _ON);
+    _hardware->setPercent(executeParameter->address, _keyPresses[_currentKeypressIndex], _ON);
 
     for (uint8_t channel = 0; channel < NUMBER_CHANNELS; channel++) {
-      hardware->setPercent(executeParameter->address, channel, _OFF);
+      _hardware->setPercent(executeParameter->address, channel, _OFF);
     }
 
     #ifdef DEBUG

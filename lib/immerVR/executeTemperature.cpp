@@ -5,61 +5,59 @@
 #include <stdio.h>
 #define DEBUG
 
-ExecuteTemperature::ExecuteTemperature(Hardware *hardware,
-                                       executeParameter_t *executeParameter) {
-  _timerCallback = &ExecuteTemperature::_idle;
+ExecuteTemperature::ExecuteTemperature(Hardware *hardware, executeParameter_t *executeParameter) {
+  this->executeParameter = executeParameter;
+  this->_hardware = hardware;
+
+  pulseValues = new value_t[executeParameter->numberElements];
+
   _lastControlUpdateTime = millis();
 
-  _setPeltierTemperature = new float[executeParameter->numberElements];
-  for (uint8_t peltier = 0; peltier < executeParameter->numberElements;
-       peltier++) {
-    _setPeltierTemperature[peltier] = 0;
-    executeParameter->elementValues[peltier] = TEMPERATURE_TO_BIT(0);
-  }
-  _timerCallback = &ExecuteTemperature::_direct;
+  _timerCallback = &ExecuteTemperature::_continuous;
 }
 
-void ExecuteTemperature::setExecuteByPattern(pattern_t pattern) {
-  if (pattern == IDLE) {
+void ExecuteTemperature::setExecuteByMode(mode_t mode) {
+  if (mode == IDLE) {
     _timerCallback = &ExecuteTemperature::_idle;
-  }
-  else if (pattern == DIRECT) {
-    _timerCallback = &ExecuteTemperature::_direct;
-  }
-  else if (pattern == CONSTANT) {
-    _timerCallback = &ExecuteTemperature::_constant;
-  } else if (pattern == RAIN) {
+  } else if (mode == CONTINUOUS) {
+    _timerCallback = &ExecuteTemperature::_continuous;
+  } else if (mode == PULSE) {
+    for (element_t element = 0; element > executeParameter->numberElements; element++) {
+      _pulseValues[element] = executeParameter->targetValues[element];
+    }
+    _timerCallback = &ExecuteTemperature::_pulse;
+  } else if (mode == RAIN) {
     _lastTick = millis();
     _lastActuated = millis();
     _timerCallback = &ExecuteTemperature::_rain;
-  }
-  else {
+  } else {
 #ifdef DEBUG
-    Serial.println("ERROR: pattern not implemented");
+    Serial.println("ERROR: mode not implemented");
 #endif // DEBUG
     _timerCallback = &ExecuteTemperature::_idle;
   }
 }
 
-void ExecuteTemperature::setIdle(Hardware *hardware,
-                                 executeParameter_t *executeParameter) {
+void ExecuteTemperature::setIdle() {
   executeParameter->updated = true;
+  for (element_t element = 0; element < executeParameter->numberElements; element++) {
+    executeParameter->targetValues[element] = 0;
+  }
   //_idle(hardware, executeParameter);
 }
 
-void ExecuteTemperature::tick(Hardware *hardware,
-                              executeParameter_t *executeParameter) {
-  // TODO check for min/max temperature here, probably disable peltier element(s)
-  (this->*_timerCallback)(hardware, executeParameter);
+void ExecuteTemperature::tick() {
+  _measureTemperature();
+  (this->*_timerCallback)();
 }
 
-String ExecuteTemperature::getMeasurements(Hardware* hardware, executeParameter_t *executeParameter) {
+String ExecuteTemperature::getCurrentValues() {
   String output = "[";
 
-    for (uint8_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
-      output += _getTemperature(hardware, peltier);
+    for (element_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
+      output += executeParameter->currentValues[peltier];
 
-      if(peltier != (executeParameter->numberElements-1)) {
+      if (peltier != (executeParameter->numberElements-1)) {
         output += ", ";
       }
     }
@@ -69,76 +67,68 @@ String ExecuteTemperature::getMeasurements(Hardware* hardware, executeParameter_
     return output;
 }
 
-void ExecuteTemperature::_idle(Hardware *hardware,
-                               executeParameter_t *executeParameter) {
+void ExecuteTemperature::_idle() {
   if (executeParameter->updated) {
-    for (uint8_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
-        hardware->setPercent(executeParameter->address, 2 * peltier + 0, _OFF);
-        hardware->setPercent(executeParameter->address, 2 * peltier + 1, _OFF);
+    for (element_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
+      executeParameter->targetValues[peltier] = 0;
+      _hardware->setPercent(executeParameter->address, 2 * peltier + 0, _OFF);
+      _hardware->setPercent(executeParameter->address, 2 * peltier + 1, _OFF);
     }
     executeParameter->updated = false;
   }
 }
 
-void ExecuteTemperature::_constant(Hardware *hardware,
-                                   executeParameter_t *executeParameter) {
-  for (uint8_t peltier = 0; peltier < executeParameter->numberElements;
-       peltier++) {
-    // check if peltier element #peltier should be on
-    uint8_t currentDeltaTemperature =
-        TEMPERATURE_TO_BIT(_getTemperature(hardware, peltier));
-    if (executeParameter->elementValues[peltier] == 0) {
-      // turn off element
-      hardware->setPercent(executeParameter->address, 2 * peltier + 0, _OFF);
-      hardware->setPercent(executeParameter->address, 2 * peltier + 1, _OFF);
-      // Serial.print("element ");
-      // Serial.print(peltier);
-      // Serial.println(": off");
-    } else if (executeParameter->elementValues[peltier] <
-               currentDeltaTemperature) {
-      // heat
-      hardware->setPercent(executeParameter->address, 2 * peltier + 0, _ON);
-      hardware->setPercent(executeParameter->address, 2 * peltier + 1, _OFF);
-      // Serial.print("element ");
-      // Serial.print(peltier);
-      // Serial.println(": hot");
-    } else if (executeParameter->elementValues[peltier] >
-               currentDeltaTemperature) {
-      // cool
-      hardware->setPercent(executeParameter->address, 2 * peltier + 0, _OFF);
-      hardware->setPercent(executeParameter->address, 2 * peltier + 1, _ON);
-      // Serial.print("element ");
-      // Serial.print(peltier);
-      // Serial.println(": cold");
+void ExecuteTemperature::_continuous() {
+  if (executeParameter->updated == true) {
+      for (element_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
+          #ifdef DEBUG
+          Serial.print("setting element: ");
+          Serial.println(peltier);
+          Serial.print("its external value is: ");
+          Serial.println(executeParameter->currentValues[peltier]);
+          Serial.print("its internal value is: ");
+          Serial.println(executeParameter->targetValues[peltier]);
+          #endif // DEBUG
+      }
+      executeParameter->updated = false;
     }
-  }
-  executeParameter->updated = false;
+    _controlPeltiers();
 }
 
-void ExecuteTemperature::_direct(Hardware *hardware, executeParameter_t *executeParameter) {
-  if (executeParameter->updated) {
-    for (uint8_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
-      _setPeltierTemperature[peltier] = BIT_TO_TEMPERATURE(executeParameter->elementValues[peltier]);
+void ExecuteTemperature::_pulse() {
+  if (executeParameter->repetitions > 0) {
+    if (millis() >= _pulseTimer) {
+      if (executeParameter->updated == true) {
+        for (element_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
+          executeParameter->targetValues[peltier] = _pulseValues[peltier];
+        }
+        _pulseTimer = millis() + executeParameter->onDurationMs;
+        executeParameter->updated = false;
+      }
+      else {
+        for (element_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
+          executeParameter->targetValues[peltier] = 0;
+        }
+        _pulseTimer = millis() + executeParameter->intervalMs;
+        executeParameter->repetitions--;
+        executeParameter->updated = true;
+      }
     }
+  }
+
+  else {
     executeParameter->updated = false;
+    setIdle();
   }
-  _controlPeltiers(hardware, executeParameter);
 }
 
-void ExecuteTemperature::_rain(Hardware *hardware, executeParameter_t *executeParameter) {
-  // parameter: raindrops per minute
-  // interval:  on time
-
-  // simple algorithm: only change state every IMPACT_ON_DURATION milliseconds
-  //                    - turn off all actuators
-  //                    - turn on as many as needed
-
+void ExecuteTemperature::_rain() {
   unsigned long tickDiff = millis() - _lastTick;
 
-  if (tickDiff > 2000){ //executeParameter->intervalMs) {
+  if (tickDiff > executeParameter->onDurationMs) { //executeParameter->intervalMs) {
     _lastTick = millis();
 
-    for (uint8_t element = 0; element < executeParameter->numberElements;
+    for (element_t element = 0; element < executeParameter->numberElements;
          element++) {
       hardware->setPercent(executeParameter->address, 2 * element + 0, _OFF);
       hardware->setPercent(executeParameter->address, 2 * element + 1, _OFF);
@@ -154,7 +144,7 @@ void ExecuteTemperature::_rain(Hardware *hardware, executeParameter_t *executePa
 
     while (_lastActuated >= newRainDropTimeMs) {
     // here not exactly #newRainDrops many elements will be on (due to randomness)
-      uint8_t onElement = random(0, executeParameter->numberElements);
+      element_t onElement = random(0, executeParameter->numberElements);
 
       // cool
       hardware->setPercent(executeParameter->address, 2 * onElement + 0, _ON);
@@ -165,50 +155,46 @@ void ExecuteTemperature::_rain(Hardware *hardware, executeParameter_t *executePa
   }
 }
 
-void ExecuteTemperature::_controlPeltiers(Hardware *hardware, executeParameter_t *executeParameter) {
+void ExecuteTemperature::_controlPeltiers() {
   unsigned long delta = millis() - _lastControlUpdateTime;
-  // every 200ms
 
   if (delta > PELTIER_UPDATE_RATE_MS) {
-    for (uint8_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
-      float currentTemperature = _getTemperature(hardware, peltier);
-
-      if (currentTemperature >= MAX_PELTIER_TEMPERATURE
-       || currentTemperature <= MIN_PELTIER_TEMPERATURE) {
+    for (element_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
+      if (executeParameter->currentValues[peltier]/100 >= MAX_PELTIER_TEMPERATURE
+       || executeParameter->currentValues[peltier]/100 <= MIN_PELTIER_TEMPERATURE) {
          char buff[100];
          snprintf(buff, 100, "WARNING: peltier element %d with %.2fC exeeds min/max values %d/%d",
                    peltier,
-                   currentTemperature,
+                   ((float)executeParameter->currentValues[peltier]/100.0f),
                    (int)MIN_PELTIER_TEMPERATURE,
                    (int)MAX_PELTIER_TEMPERATURE
                  );
         Serial.println(buff);
 
-        hardware->setPercent(executeParameter->address, 2 * peltier + 0, _OFF);
-        hardware->setPercent(executeParameter->address, 2 * peltier + 1, _OFF);
+        _hardware->setPercent(executeParameter->address, 2 * peltier + 0, _OFF);
+        _hardware->setPercent(executeParameter->address, 2 * peltier + 1, _OFF);
       }
 
-      else if (_setPeltierTemperature[peltier] == 0) {
+      else if (executeParameter->targetValues[peltier] == 0) {
         // turn off element
-        hardware->setPercent(executeParameter->address, 2 * peltier + 0, _OFF);
-        hardware->setPercent(executeParameter->address, 2 * peltier + 1, _OFF);
+        _hardware->setPercent(executeParameter->address, 2 * peltier + 0, _OFF);
+        _hardware->setPercent(executeParameter->address, 2 * peltier + 1, _OFF);
 
         //Serial.print("element ");
         //Serial.print(peltier);
         //Serial.println(": off");
-
-      } else if (_setPeltierTemperature[peltier] < currentTemperature) {
+      } else if (executeParameter->targetValues[peltier] < executeParameter->currentValues[peltier]) {
         // heat
-        hardware->setPercent(executeParameter->address, 2 * peltier + 0, _ON);
-        hardware->setPercent(executeParameter->address, 2 * peltier + 1, _OFF);
+        _hardware->setPercent(executeParameter->address, 2 * peltier + 0, _ON);
+        _hardware->setPercent(executeParameter->address, 2 * peltier + 1, _OFF);
 
         //Serial.print("element ");
         //Serial.print(peltier);
         //Serial.println(": hot");
-      } else if (_setPeltierTemperature[peltier] > currentTemperature) {
+      } else if (executeParameter->targetValues[peltier] > executeParameter->currentValues[peltier]) {
         // cool
-        hardware->setPercent(executeParameter->address, 2 * peltier + 0, _OFF);
-        hardware->setPercent(executeParameter->address, 2 * peltier + 1, _ON);
+        _hardware->setPercent(executeParameter->address, 2 * peltier + 0, _OFF);
+        _hardware->setPercent(executeParameter->address, 2 * peltier + 1, _ON);
 
         //Serial.print("element ");
         //Serial.print(peltier);
@@ -219,35 +205,37 @@ void ExecuteTemperature::_controlPeltiers(Hardware *hardware, executeParameter_t
   }
 }
 
-float ExecuteTemperature::_getTemperature(Hardware *hardware, uint8_t element) {
-// B-parameter method:
-// 1/T = 1/T0 + 1/B * ln(R/R0) -- where T0, T in Kelvin
+void ExecuteTemperature::_measureTemperature() {
+  for (element_t element = 0; element > executeParameter->numberElements; element++) {
+  // B-parameter method:
+  // 1/T = 1/T0 + 1/B * ln(R/R0) -- where T0, T in Kelvin
 
-  // edit the address of the i2c AD-converter if necessary:
-  // (0x48 - 0x4B) default: 0x48
-  uint16_t reading = hardware->readAdValue(0x48, element);
-  // with a votage divider voltage should be Vin/2 at T0
-  float voltage =                        // TODO coefficient 0.1875 incorrect?
-      Vin - ((reading * 0.1875) / 1000); // +/-6.144V with 32767 values
+    // edit the address of the i2c AD-converter if necessary:
+    // (0x48 - 0x4B) default: 0x48
+    uint16_t reading = _hardware->readAdValue(0x48, element);
+    // with a votage divider voltage should be Vin/2 at T0
+    float voltage =                        // TODO coefficient 0.1875 incorrect?
+        Vin - ((reading * 0.1875) / 1000); // +/-6.144V with 32767 values
 
-  // calibrating
-  voltage = voltage + 0.12;
+    // calibrating
+    voltage = voltage + 0.12;
 
-  // Serial.print("Element: ");
-  // Serial.println(element);
-  // Serial.print(voltage);
-  // Serial.println("V");
+    // Serial.print("Element: ");
+    // Serial.println(element);
+    // Serial.print(voltage);
+    // Serial.println("V");
 
-  float R = R_0 * (voltage / (Vin / 2)); // R0 * proportional Voltage to 1.65V
+    float R = R_0 * (voltage / (Vin / 2)); // R0 * proportional Voltage to 1.65V
 
-  float temperature = 1.0 / (T_0 + 273.15) + 1.0 / B * log(R / R_0);
+    float temperature = 1.0 / (T_0 + 273.15) + 1.0 / B * log(R / R_0);
 
-  temperature = (1 / temperature) - 273.15;
+    temperature = (1 / temperature) - 273.15;
 
 
-  // TODO Remove HACK
-  if (element == 1)
-    return 25;
+    // TODO Remove HACK
+    if (element == 1)
+      executeParameter->currentValues[element] = 25;
 
-  return temperature;
+    executeParameter->currentValues[element] = temperature * 100;
+  }
 }

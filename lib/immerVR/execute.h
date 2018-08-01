@@ -4,34 +4,42 @@
 #include <stdint.h>
 #include "hardware.h"
 
-typedef uint16_t parameter_t;
 typedef uint16_t intensity_t;
-typedef uint16_t mask_t;
 typedef uint8_t i2cAddress_t;
 typedef uint16_t intervalMs_t;
+typedef uint16_t onDurationMs_t;
+typedef uint16_t value_t;
+typedef uint8_t element_t;
+typedef uint16_t repetition_t;
 
 typedef struct {
   i2cAddress_t address;
-  uint8_t numberElements;
-  uint8_t *elementValues;
-  parameter_t parameter;
-  intensity_t intensity;
-  mask_t mask;
-  pattern_t pattern;
+  element_t numberElements;
+  mode_t mode;
+  value_t *currentValues;
+  value_t *targetValues;
   intervalMs_t intervalMs;
+  onDurationMs_t onDurationMs;
+  repetition_t repetitions;
   bool updated;
 } executeParameter_t;
 
 class Execute {
 public:
-  Execute();
-  virtual void setExecuteByPattern(pattern_t pattern);
-  virtual void setIdle(Hardware *hardware,
-                       executeParameter_t *executeParameter);
-  virtual void tick(Hardware *hardware, executeParameter_t *executeParameter);
-  virtual String getMeasurements(Hardware *hardware, executeParameter_t *executeParameter);
+  executeParameter_t *executeParameter;
 
-private:
+  Execute();
+  void setTargetValues(value_t *values);
+  void setIntervalMs(intervalMs_t intervalMs);
+  void setOnDurationMs(onDurationMs_t onDurationMs);
+  void setRepetitions(repetition_t repetitions);
+  virtual void setExecuteByMode(mode_t mode) = 0;
+  virtual void setIdle() = 0;
+  virtual void tick() = 0;
+  virtual String getCurrentValues() = 0;
+
+protected:
+  Hardware *_hardware;
 };
 
 #endif // EXECUTE_H

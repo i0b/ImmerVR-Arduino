@@ -17,30 +17,32 @@
 //typedef enum { UP, RIGHT, LEFT, DOWN, MODE } button_t; // old mapping
 typedef enum { DOWN, RIGHT, MODE, UP, LEFT } button_t;
 
+typedef enum { TENS1, TENS2, TENS3 } emsMode_t;
+
 class ExecuteEMS : public Execute {
 public:
-ExecuteEMS(Hardware* hardware, executeParameter_t* executeParameter);
-void setExecuteByPattern(pattern_t pattern);
-void setIdle(Hardware* hardware, executeParameter_t* executeParameter);
-void tick(Hardware* hardware, executeParameter_t* executeParameter);
-String getMeasurements(Hardware *hardware, executeParameter_t *executeParameter);
+ExecuteEMS(Hardware *hardware, executeParameter_t *executeParameter);
+void setExecuteByMode(mode_t mode);
+void setIdle();
+void tick();
+String getCurrentValues();
 
 private:
-uint8_t *_intensity;
+unsigned long _pulseTimer;
 uint8_t *_keyPresses;
 uint8_t _keyPressState;
 uint8_t _lastKeypressIndex;
 uint8_t _currentKeypressIndex;
 unsigned long _lastKeypressTimeMs;
-unsigned long _onTime;
-uint8_t _mode;
-void (ExecuteEMS::*_timerCallback)(Hardware* hardware, executeParameter_t* executeParameter);
-void _idle(Hardware* hardware, executeParameter_t* executeParameter);
-void _direct(Hardware* hardware, executeParameter_t* executeParameter);
-void _rain(Hardware* hardware, executeParameter_t* executeParameter);
-void _setIntensity(Hardware* hardware, uint8_t element, executeParameter_t* executeParameter);
-void _setMode(Hardware* hardware, executeParameter_t* executeParameter);
-void _executeKeypresses(Hardware* hardware, executeParameter_t* executeParameter);
+emsMode_t _emsMode;
+void (ExecuteEMS::*_timerCallback)();
+void _idle();
+void _continuous();
+void _pulse();
+void _setValues(value_t* values);
+void _setMode(emsMode_t emsMode);
+void _setIntensity(value_t *values);
+void _executeKeypresses();
 void _press(button_t button);
 void _increaseOnTime();
 };

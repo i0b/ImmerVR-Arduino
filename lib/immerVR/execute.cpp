@@ -4,11 +4,22 @@
 
 Execute::Execute() {
 }
-void Execute::setExecuteByPattern(pattern_t pattern) {
+
+void Execute::setTargetValues(Module* module, value_t *values) {
+  for (numberElements_t element; element < module->executeParameter->numberElements; element++) {
+    module->executeParameter->targetValues[element] = values[element];
+  }
+  executeParameter->updated = true;
 }
-void Execute::setIdle(Hardware* hardware, executeParameter_t* executeParameter) {
+
+void Execute::setIntervalMs(Module* module, intervalMs_t intervalMs) {
+  module->executeParameter->intervalMs = intervalMs;
 }
-void Execute::tick(Hardware* hardware, executeParameter_t* executeParameter) {
+
+void Execute::setOnDurationMs(Module* module, onDurationMs_t onDurationMs) {
+  module->executeParameter->onDurationMs = onDurationMs;
 }
-String Execute::getMeasurements(Hardware *hardware, executeParameter_t *executeParameter) {
+
+void Execute::setRepetitions(Module *module, repetition_t repetitions) {
+  module->executeParameter->repetitions = repetitions;
 }
