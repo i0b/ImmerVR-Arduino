@@ -1,7 +1,7 @@
 //#define DEBUG
 #include <SPI.h>
 #include <Wire.h>
-#include "module.h"
+#include <Arduino.h>
 #include "immerVR.h"
 
 ImmerVR::ImmerVR() {
@@ -101,7 +101,7 @@ void ImmerVR::addModule(i2cAddress_t i2cAddress, uint8_t numElements, moduleType
 }
 
 void ImmerVR::parseCommand(String command) {
-        _parser->parseCommand(command);
+  Serial.println(_parser->parseCommand(command));
 }
 
 void ImmerVR::_printModuleStates() {
@@ -118,28 +118,23 @@ void ImmerVR::_printModuleStates() {
           output += module;
           output += ", \"type\": ";
 
-          if (_modules[module]->getModuleType() == VIBRATE) {
+          if (_modules[module]->type == VIBRATE) {
             output += "\"vibration\"";
           }
-          else if (_modules[module]->getModuleType() == TEMPERATURE) {
+          else if (_modules[module]->type == TEMPERATURE) {
             output += "\"temperature\"";
           }
-          else if (_modules[module]->getModuleType() == EMS) {
+          else if (_modules[module]->type == EMS) {
             output += "\"ems\"";
           }
 
           // values
           output += ", \"values\": [";
 
-          for (uint8_t value = 0; value < _modules[module]->executeParameter->numberElements; value++) {
-            if (_modules[module]->getModuleType() == TEMPERATURE) {
-              output += BIT_TO_TEMPERATURE(_modules[module]->executeParameter->elementValues[value]);
-            }
-            else {
-              output += _modules[module]->executeParameter->elementValues[value];
-            }
+          for (uint8_t value = 0; value < _modules[module]->execute->executeParameter->numberElements; value++) {
+            output += _modules[module]->execute->executeParameter->currentValues[value];
 
-            if (value < _modules[module]->executeParameter->numberElements-1) {
+            if (value < _modules[module]->execute->executeParameter->numberElements-1) {
               output += ", ";
             }
             else {
@@ -147,13 +142,35 @@ void ImmerVR::_printModuleStates() {
             }
           }
 
-          // only display temperature measurements
-          if (_modules[module]->getModuleType() == TEMPERATURE) {
-            Execute* moduleExecute = _modules[module]->getExecute();
-            output += ", \"measurements\": " + moduleExecute->getMeasurements(_hardware, _modules[module]->executeParameter);
+          // mode
+
+          output += ", \"mode\": \"";
+
+          switch(_modules[module]->execute->executeParameter->mode) {
+            case IDLE:
+              output += "idle";
+              break;
+            case CONTINUOUS:
+              output += "continuous";
+              break;
+            case PULSE:
+              output += "pulse";
+              break;
+            case HEARTBEAT:
+              output += "heartbeat";
+              break;
+            case RAIN:
+              output += "rain";
+              break;
+            case DASH:
+              output += "dash";
+              break;
+            default:
+              output += "unknown";
+              break;
           }
 
-          output += " }";
+          output += "\" }";
           if (module < _numModules-1) {
             output += ", ";
           }

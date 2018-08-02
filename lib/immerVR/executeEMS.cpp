@@ -1,6 +1,4 @@
-#include "execute.h"
 #include "executeEMS.h"
-#include "hardware.h"
 #include <Arduino.h>
 
 #define NUMBER_CHANNELS 5
@@ -20,17 +18,20 @@ ExecuteEMS::ExecuteEMS(Hardware *hardware, executeParameter_t *executeParameter)
   _keyPressState = 0;
   _lastKeypressIndex = 0;
   _currentKeypressIndex = 0;
+  _pulseActuateState = false;
 
+  this->executeParameter->mode = CONTINUOUS;
   _timerCallback = &ExecuteEMS::_continuous;
 }
 
-void ExecuteEMS::setExecuteByMode(mode_t mode) {
+void ExecuteEMS::setExecuteByMode(actuationMode_t mode) {
   // switch (mode)
   if (mode == IDLE) {
     _timerCallback = &ExecuteEMS::_idle;
   } else if (mode == CONTINUOUS) {
     _timerCallback = &ExecuteEMS::_continuous;
   } else if (mode == PULSE) {
+    _pulseActuateState = true;
     _timerCallback = &ExecuteEMS::_pulse;
   } else {
 #ifdef DEBUG
@@ -62,7 +63,7 @@ void ExecuteEMS::tick() {
 
 void ExecuteEMS::_idle() {
   if (executeParameter->updated) {
-    for (element_t element; element < executeParameter->numberElements; element++) {
+    for (element_t element = 0; element < executeParameter->numberElements; element++) {
       executeParameter->targetValues[element] = 0;
 
       // for now only having two elements is implemented
@@ -112,7 +113,6 @@ TODO
       }
     }
 
-
     _setIntensity(executeParameter->targetValues);
     executeParameter->updated = false;
   }
@@ -121,16 +121,16 @@ TODO
 void ExecuteEMS::_pulse() {
   if (executeParameter->repetitions > 0) {
     if (millis() >= _pulseTimer) {
-      if (executeParameter->updated == true) {
+      if (_pulseActuateState == true) {
         _setIntensity(executeParameter->targetValues);
         _pulseTimer = millis() + executeParameter->onDurationMs;
-        executeParameter->updated = false;
+        _pulseActuateState = false;
       }
       else {
         _setIntensity(NULL);
         _pulseTimer = millis() + executeParameter->intervalMs;
         executeParameter->repetitions--;
-        executeParameter->updated = true;
+        _pulseActuateState = true;
       }
     }
   }
@@ -166,7 +166,6 @@ void ExecuteEMS::_setIntensity(value_t *values) {
   hardware->displayMessage(0, 1, "I: " + String(executeParameter->intensity));
 #endif // DISPLAY
 */
-
   bool changed = false;
 
   for (element_t element = 0; element < executeParameter->numberElements; element++) {
@@ -183,6 +182,12 @@ void ExecuteEMS::_setIntensity(value_t *values) {
       else if (element == 1) {
         _press(RIGHT);
         _press(RIGHT);
+      }
+
+      // safty measurment
+      if (value > MAX_EMS_VALUE) {
+        Serial.println("ERRROR: set EMS value exeedes the maximal allowed value");
+        executeParameter->targetValues[element] = 0;
       }
 
       for (uint8_t times = 0; times < (value - executeParameter->currentValues[element]); times++) {
@@ -204,7 +209,6 @@ void ExecuteEMS::_setIntensity(value_t *values) {
         _press(DOWN);
       }
     }
-
 
     #ifdef DEBUG
     Serial.print(" to delta: ");

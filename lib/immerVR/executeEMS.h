@@ -2,6 +2,7 @@
 #define EXECUTEEMS_H
 
 #define KEY_PRESS_QUEUE_MAX 64
+#define MAX_EMS_VALUE 15
 
 #include "execute.h"
 #include "hardware.h"
@@ -19,16 +20,18 @@ typedef enum { DOWN, RIGHT, MODE, UP, LEFT } button_t;
 
 typedef enum { TENS1, TENS2, TENS3 } emsMode_t;
 
+
 class ExecuteEMS : public Execute {
 public:
 ExecuteEMS(Hardware *hardware, executeParameter_t *executeParameter);
-void setExecuteByMode(mode_t mode);
+void setExecuteByMode(actuationMode_t mode);
 void setIdle();
 void tick();
 String getCurrentValues();
 
 private:
 unsigned long _pulseTimer;
+bool _pulseActuateState;
 uint8_t *_keyPresses;
 uint8_t _keyPressState;
 uint8_t _lastKeypressIndex;

@@ -33,7 +33,7 @@ public:
   void setIntervalMs(intervalMs_t intervalMs);
   void setOnDurationMs(onDurationMs_t onDurationMs);
   void setRepetitions(repetition_t repetitions);
-  virtual void setExecuteByMode(mode_t mode) = 0;
+  virtual void setExecuteByMode(actuationMode_t mode) = 0;
   virtual void setIdle() = 0;
   virtual void tick() = 0;
   virtual String getCurrentValues() = 0;

@@ -59,6 +59,13 @@ void Module::tick() {
   }
 }
 
+void Module::setRepetitions(repetition_t repetitions) {
+    if (execute->executeParameter->repetitions != repetitions) {
+      execute->executeParameter->updated = true;
+      execute->executeParameter->repetitions = repetitions;
+    }
+}
+
 void Module::setIntervalMs(intervalMs_t intervalMs) {
   if (execute->executeParameter->intervalMs != intervalMs) {
     execute->executeParameter->updated = true;
@@ -73,7 +80,7 @@ void Module::setOnDurationMs(onDurationMs_t onDurationMs) {
   }
 }
 
-void Module::setMode(mode_t mode) {
+void Module::setMode(actuationMode_t mode) {
   // set to idle mode before continue -- this turns all actuators of first
   if (execute->executeParameter->mode != mode) {
     execute->setIdle();

@@ -12,16 +12,12 @@ typedef enum {
   CONTINUOUS,
   PULSE,
   HEARTBEAT,
-  RAIN
+  RAIN,
+  DASH
   //ROTATION,
   //SWIPE_LEFT_RIGHT,
-} mode_t;
+} actuationMode_t;
 
-// zero at uint8_t/2, then in 0.5 degree steps up / down
-// zero: 37°C at 1000 0000b = 128d
-// e.g.  37.5°C at 129d, 36°C at 126d
-//#define TEMPERATURE_TO_BIT(x) (128 + ((x - 37) * 2))
-//#define BIT_TO_TEMPERATURE(x) (((x - 128) / 2) + 37)
 
 #define _ON (100)
 #define _OFF (0)

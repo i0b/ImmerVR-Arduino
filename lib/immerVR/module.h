@@ -7,16 +7,20 @@
 #include "executeTemperature.h"
 #include "executeEMS.h"
 
+#define MAX_NUM_MODULES     5
+typedef uint8_t moduleId_t;
+
 class Module {
 public:
   Module();
   bool begin(i2cAddress_t i2cAddress, uint8_t numElements, moduleType_t type,
              Hardware *hardware);
   void tick();
-  void setMode(mode_t mode);
+  void setMode(actuationMode_t mode);
+  void setRepetitions(repetition_t repetitions);
   void setIntervalMs(intervalMs_t interval);
   void setOnDurationMs(onDurationMs_t onDurationMs);
-  uint8_t getNumberElements();
+  element_t getNumberElements();
   moduleType_t type;
   Hardware *hardware;
   Execute* execute;

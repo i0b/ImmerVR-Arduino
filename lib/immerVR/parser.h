@@ -6,13 +6,12 @@
 
 class Parser {
 public:
-  Parser(Module **modules, uint8_t *numModules);
+  Parser(Module **modules, moduleId_t *numModules);
   String parseCommand(String req);
 
 private:
   Module **_modules;
-  uint8_t *_numModules;
-  void parseModuleCommand(JsonObject& root);
+  moduleId_t *_numModules;
 };
 
 #endif // PARSER_H

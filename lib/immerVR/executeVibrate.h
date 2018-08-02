@@ -9,23 +9,23 @@
 class ExecuteVibrate : public Execute {
 public:
 ExecuteVibrate(Hardware* hardware, executeParameter_t* executeParameter);
-void setExecuteByMode(mode_t mode);
-void setIdle(Hardware* hardware, executeParameter_t* executeParameter);
-void tick(Hardware* hardware, executeParameter_t* executeParameter);
-String getMeasurements(Hardware *hardware, executeParameter_t *executeParameter);
+void setExecuteByMode(actuationMode_t mode);
+void setIdle();
+void tick();
+String getCurrentValues();
 
 private:
-unsigned long _lastTick;
-unsigned long _lastActuated;
-uint8_t _lastElement;
-void (ExecuteVibrate::*_timerCallback)(Hardware* hardware, executeParameter_t* executeParameter);
-void _idle(Hardware* hardware, executeParameter_t* executeParameter);
-void _direct(Hardware* hardware, executeParameter_t* executeParameter);
-void _constant(Hardware* hardware, executeParameter_t* executeParameter);
-void _heartbeat(Hardware* hardware, executeParameter_t* executeParameter);
-void _rotation(Hardware* hardware, executeParameter_t* executeParameter);
-void _leftRight(Hardware* hardware, executeParameter_t* executeParameter);
-void _rain(Hardware* hardware, executeParameter_t* executeParameter);
+unsigned long _pulseTimer;
+uint8_t _dashState;
+bool _pulseActuateState;
+void (ExecuteVibrate::*_timerCallback)();
+void _idle();
+void _continuous();
+void _pulse();
+void _rain();
+// TODO heartbeat repetitions
+void _heartbeat();
+void _dash();
 };
 
 #endif // EXECUTEVIBRATE_H

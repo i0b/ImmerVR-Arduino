@@ -5,21 +5,21 @@
 Execute::Execute() {
 }
 
-void Execute::setTargetValues(Module* module, value_t *values) {
-  for (numberElements_t element; element < module->executeParameter->numberElements; element++) {
-    module->executeParameter->targetValues[element] = values[element];
+void Execute::setTargetValues(value_t *values) {
+  for (element_t element = 0; element < executeParameter->numberElements; element++) {
+    executeParameter->targetValues[element] = values[element];
   }
   executeParameter->updated = true;
 }
 
-void Execute::setIntervalMs(Module* module, intervalMs_t intervalMs) {
-  module->executeParameter->intervalMs = intervalMs;
+void Execute::setIntervalMs(intervalMs_t intervalMs) {
+  executeParameter->intervalMs = intervalMs;
 }
 
-void Execute::setOnDurationMs(Module* module, onDurationMs_t onDurationMs) {
-  module->executeParameter->onDurationMs = onDurationMs;
+void Execute::setOnDurationMs(onDurationMs_t onDurationMs) {
+  executeParameter->onDurationMs = onDurationMs;
 }
 
-void Execute::setRepetitions(Module *module, repetition_t repetitions) {
-  module->executeParameter->repetitions = repetitions;
+void Execute::setRepetitions(repetition_t repetitions) {
+  executeParameter->repetitions = repetitions;
 }

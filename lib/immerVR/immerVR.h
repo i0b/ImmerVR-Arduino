@@ -1,8 +1,8 @@
 #ifndef IMMERVR_H
 #define IMMERVR_H
 
-#include "hardware.h"
 #include "module.h"
+#include "hardware.h"
 #include "parser.h"
 //#include <ESP8266WiFi.h>
 // The port to listen for incoming TCP connections
@@ -10,7 +10,7 @@
 #define BAUDRATE            115200
 #define DEBUG_INTERVAL      1000
 #define SERIAL_TIMEOUT      10
-#define MAX_NUM_MODULES     5
+
 
 class ImmerVR {
 
@@ -18,7 +18,7 @@ public:
 ImmerVR();
 void begin();
 void run();
-void addModule(i2cAddress_t i2cAddress, uint8_t numElements, moduleType_t type);
+void addModule(i2cAddress_t i2cAddress, element_t numElements, moduleType_t type);
 void parseCommand(String command);
 
 private:
@@ -33,7 +33,7 @@ private:
 Hardware* _hardware;
 Parser* _parser;
 Module* _modules[MAX_NUM_MODULES];
-uint8_t _numModules;
+moduleId_t _numModules;
 uint32_t _debugHeartbeatMillis;
 String _serialInput;
 void _printModuleStates();

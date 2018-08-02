@@ -14,23 +14,22 @@
 #define Vin 3.31
 
 #define PELTIER_UPDATE_RATE_MS  50
-#define MIN_PELTIER_TEMPERATURE 10
-#define MAX_PELTIER_TEMPERATURE 35
+#define MIN_PELTIER_TEMPERATURE 20
+#define MAX_PELTIER_TEMPERATURE 40
 
 
 class ExecuteTemperature : public Execute {
 public:
   ExecuteTemperature(Hardware *hardware, executeParameter_t *executeParameter);
-  void setExecuteByMode(mode_t mode);
+  void setExecuteByMode(actuationMode_t mode);
   void setIdle();
   void tick();
   String getCurrentValues();
 
 private:
   unsigned long _pulseTimer;
-  unsigned long _lastTick;
-  unsigned long _lastActuated;
   unsigned long _lastControlUpdateTime;
+  bool _pulseActuateState;
   value_t *_pulseValues;
   void (ExecuteTemperature::*_timerCallback)();
   void _idle();

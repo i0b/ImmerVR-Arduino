@@ -1,34 +1,37 @@
-#include "execute.h"
 #include "executeTemperature.h"
-#include "hardware.h"
 #include <Arduino.h>
 #include <stdio.h>
+
 #define DEBUG
 
 ExecuteTemperature::ExecuteTemperature(Hardware *hardware, executeParameter_t *executeParameter) {
   this->executeParameter = executeParameter;
   this->_hardware = hardware;
 
-  pulseValues = new value_t[executeParameter->numberElements];
+  _pulseValues = new value_t[executeParameter->numberElements];
+  _pulseActuateState = false;
 
   _lastControlUpdateTime = millis();
 
-  _timerCallback = &ExecuteTemperature::_continuous;
+    this->executeParameter->mode = IDLE;
+  _timerCallback = &ExecuteTemperature::_idle;
 }
 
-void ExecuteTemperature::setExecuteByMode(mode_t mode) {
+void ExecuteTemperature::setExecuteByMode(actuationMode_t mode) {
   if (mode == IDLE) {
     _timerCallback = &ExecuteTemperature::_idle;
   } else if (mode == CONTINUOUS) {
     _timerCallback = &ExecuteTemperature::_continuous;
   } else if (mode == PULSE) {
+    _pulseTimer = millis();
+    _pulseActuateState = true;
     for (element_t element = 0; element > executeParameter->numberElements; element++) {
       _pulseValues[element] = executeParameter->targetValues[element];
     }
     _timerCallback = &ExecuteTemperature::_pulse;
   } else if (mode == RAIN) {
-    _lastTick = millis();
-    _lastActuated = millis();
+    _pulseTimer = millis();
+    _pulseActuateState = true;
     _timerCallback = &ExecuteTemperature::_rain;
   } else {
 #ifdef DEBUG
@@ -40,10 +43,10 @@ void ExecuteTemperature::setExecuteByMode(mode_t mode) {
 
 void ExecuteTemperature::setIdle() {
   executeParameter->updated = true;
+  executeParameter->mode = IDLE;
   for (element_t element = 0; element < executeParameter->numberElements; element++) {
     executeParameter->targetValues[element] = 0;
   }
-  //_idle(hardware, executeParameter);
 }
 
 void ExecuteTemperature::tick() {
@@ -98,12 +101,12 @@ void ExecuteTemperature::_continuous() {
 void ExecuteTemperature::_pulse() {
   if (executeParameter->repetitions > 0) {
     if (millis() >= _pulseTimer) {
-      if (executeParameter->updated == true) {
+      if (_pulseActuateState == true) {
         for (element_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
           executeParameter->targetValues[peltier] = _pulseValues[peltier];
         }
         _pulseTimer = millis() + executeParameter->onDurationMs;
-        executeParameter->updated = false;
+        _pulseActuateState = false;
       }
       else {
         for (element_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
@@ -111,7 +114,7 @@ void ExecuteTemperature::_pulse() {
         }
         _pulseTimer = millis() + executeParameter->intervalMs;
         executeParameter->repetitions--;
-        executeParameter->updated = true;
+        _pulseActuateState = true;
       }
     }
   }
@@ -123,6 +126,25 @@ void ExecuteTemperature::_pulse() {
 }
 
 void ExecuteTemperature::_rain() {
+  if (millis() >= _pulseTimer) {
+    if (_pulseActuateState == true) {
+      element_t onElement = random(0, executeParameter->numberElements);
+      executeParameter->targetValues[onElement] = 2000; // 20*C // cool
+
+      _pulseTimer = millis() + executeParameter->onDurationMs;
+    _pulseActuateState = false;
+    }
+    else {
+      for (element_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
+        executeParameter->targetValues[peltier] = 0;
+      }
+      _pulseTimer = millis() + executeParameter->intervalMs;
+      executeParameter->repetitions--;
+      _pulseActuateState = true;
+    }
+  }
+
+  /*
   unsigned long tickDiff = millis() - _lastTick;
 
   if (tickDiff > executeParameter->onDurationMs) { //executeParameter->intervalMs) {
@@ -153,6 +175,7 @@ void ExecuteTemperature::_rain() {
       _lastActuated -= newRainDropTimeMs;
     }
   }
+  */
 }
 
 void ExecuteTemperature::_controlPeltiers() {
@@ -234,7 +257,7 @@ void ExecuteTemperature::_measureTemperature() {
 
     // TODO Remove HACK
     if (element == 1)
-      executeParameter->currentValues[element] = 25;
+      executeParameter->currentValues[element] = 25 * 100;
 
     executeParameter->currentValues[element] = temperature * 100;
   }
