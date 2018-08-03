@@ -12,6 +12,7 @@ ExecuteTemperature::ExecuteTemperature(Hardware *hardware, executeParameter_t *e
   _pulseActuateState = false;
 
   _lastControlUpdateTime = millis();
+  _lastMeasureUpdateTime = millis();
 
     this->executeParameter->mode = IDLE;
   _timerCallback = &ExecuteTemperature::_idle;
@@ -50,7 +51,11 @@ void ExecuteTemperature::setIdle() {
 }
 
 void ExecuteTemperature::tick() {
-  _measureTemperature();
+  if (millis() >= _lastMeasureUpdateTime + PELTIER_UPDATE_RATE_MS) {
+    _measureTemperature();
+    _lastMeasureUpdateTime = millis();
+  }
+  
   (this->*_timerCallback)();
 }
 
@@ -183,14 +188,14 @@ void ExecuteTemperature::_controlPeltiers() {
 
   if (delta > PELTIER_UPDATE_RATE_MS) {
     for (element_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
-      if (executeParameter->currentValues[peltier]/100 >= MAX_PELTIER_TEMPERATURE
-       || executeParameter->currentValues[peltier]/100 <= MIN_PELTIER_TEMPERATURE) {
+      if (((float)executeParameter->currentValues[peltier])/100.0f >= MAX_PELTIER_TEMPERATURE
+       || ((float)executeParameter->currentValues[peltier])/100.0f <= MIN_PELTIER_TEMPERATURE) {
          char buff[100];
-         snprintf(buff, 100, "WARNING: peltier element %d with %.2fC exeeds min/max values %d/%d",
+         snprintf(buff, 100, "WARNING: peltier element %d with %.2fC exeeds min/max values %.2f/%.2f",
                    peltier,
                    ((float)executeParameter->currentValues[peltier]/100.0f),
-                   (int)MIN_PELTIER_TEMPERATURE,
-                   (int)MAX_PELTIER_TEMPERATURE
+                   (float)MIN_PELTIER_TEMPERATURE,
+                   (float)MAX_PELTIER_TEMPERATURE
                  );
         Serial.println(buff);
 

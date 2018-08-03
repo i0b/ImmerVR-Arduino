@@ -28,6 +28,7 @@ public:
 
 private:
   unsigned long _pulseTimer;
+  unsigned long _lastMeasureUpdateTime;
   unsigned long _lastControlUpdateTime;
   bool _pulseActuateState;
   value_t *_pulseValues;
