@@ -39,8 +39,6 @@ bool Module::begin(i2cAddress_t i2cAddress, uint8_t numElements,
     executeParameter->targetValues[element] = 0;
   }
 
-  _timerTickInterval = 50;
-
   if (type == VIBRATE) {
     execute = new ExecuteVibrate(hardware, executeParameter);
   } else if (type == TEMPERATURE) {
@@ -53,7 +51,7 @@ bool Module::begin(i2cAddress_t i2cAddress, uint8_t numElements,
 }
 
 void Module::tick() {
-  if ((millis() - _lastTick) >= _timerTickInterval) {
+  if ((millis() - _lastTick) >= EXECUTE_REFRESH_RATE) {
     _lastTick = millis();
     execute->tick();
   }

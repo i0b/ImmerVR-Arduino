@@ -3,6 +3,7 @@
 #include <Wire.h>
 #include <Arduino.h>
 #include "immerVR.h"
+#include "hardware.h"
 
 ImmerVR::ImmerVR() {
 }
@@ -144,31 +145,7 @@ void ImmerVR::_printModuleStates() {
 
           // mode
 
-          output += ", \"mode\": \"";
-
-          switch(_modules[module]->execute->executeParameter->mode) {
-            case IDLE:
-              output += "idle";
-              break;
-            case CONTINUOUS:
-              output += "continuous";
-              break;
-            case PULSE:
-              output += "pulse";
-              break;
-            case HEARTBEAT:
-              output += "heartbeat";
-              break;
-            case RAIN:
-              output += "rain";
-              break;
-            case DASH:
-              output += "dash";
-              break;
-            default:
-              output += "unknown";
-              break;
-          }
+          output += ", \"mode\": \"" + actuatorModeStrings[_modules[module]->execute->executeParameter->mode];
 
           output += "\" }";
           if (module < _numModules-1) {

@@ -12,6 +12,7 @@ public:
 private:
   Module **_modules;
   moduleId_t *_numModules;
+  actuationMode_t _readMode;
 };
 
 #endif // PARSER_H

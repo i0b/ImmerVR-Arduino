@@ -4,7 +4,11 @@
 #include "execute.h"
 #include "hardware.h"
 
-#define HEARTBEAT_VIBRATOR_ON_TIME 100
+#define HEARTBEAT_INTERVAL_BETWEEN 150
+
+#define HEARTBEAT_IDLE  0
+#define HEARTBEAT_START 1
+#define HEARTBEAT_END   2
 
 class ExecuteVibrate : public Execute {
 public:
@@ -16,7 +20,7 @@ String getCurrentValues();
 
 private:
 unsigned long _pulseTimer;
-uint8_t _dashState;
+uint8_t _state;
 bool _pulseActuateState;
 void (ExecuteVibrate::*_timerCallback)();
 void _idle();

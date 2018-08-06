@@ -14,8 +14,8 @@ ExecuteTemperature::ExecuteTemperature(Hardware *hardware, executeParameter_t *e
   _lastControlUpdateTime = millis();
   _lastMeasureUpdateTime = millis();
 
-    this->executeParameter->mode = IDLE;
-  _timerCallback = &ExecuteTemperature::_idle;
+    this->executeParameter->mode = CONTINUOUS;
+  _timerCallback = &ExecuteTemperature::_continuous;
 }
 
 void ExecuteTemperature::setExecuteByMode(actuationMode_t mode) {
@@ -55,7 +55,7 @@ void ExecuteTemperature::tick() {
     _measureTemperature();
     _lastMeasureUpdateTime = millis();
   }
-  
+
   (this->*_timerCallback)();
 }
 
@@ -188,8 +188,9 @@ void ExecuteTemperature::_controlPeltiers() {
 
   if (delta > PELTIER_UPDATE_RATE_MS) {
     for (element_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
-      if (((float)executeParameter->currentValues[peltier])/100.0f >= MAX_PELTIER_TEMPERATURE
-       || ((float)executeParameter->currentValues[peltier])/100.0f <= MIN_PELTIER_TEMPERATURE) {
+      if (executeParameter->currentValues[peltier] != 0 && (
+        ((float)executeParameter->currentValues[peltier])/100.0f >= MAX_PELTIER_TEMPERATURE ||
+        ((float)executeParameter->currentValues[peltier])/100.0f <= MIN_PELTIER_TEMPERATURE)) {
          char buff[100];
          snprintf(buff, 100, "WARNING: peltier element %d with %.2fC exeeds min/max values %.2f/%.2f",
                    peltier,
@@ -234,13 +235,13 @@ void ExecuteTemperature::_controlPeltiers() {
 }
 
 void ExecuteTemperature::_measureTemperature() {
-  for (element_t element = 0; element > executeParameter->numberElements; element++) {
+  for (element_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
   // B-parameter method:
   // 1/T = 1/T0 + 1/B * ln(R/R0) -- where T0, T in Kelvin
 
     // edit the address of the i2c AD-converter if necessary:
     // (0x48 - 0x4B) default: 0x48
-    uint16_t reading = _hardware->readAdValue(0x48, element);
+    uint16_t reading = _hardware->readAdValue(0x48, peltier);
     // with a votage divider voltage should be Vin/2 at T0
     float voltage =                        // TODO coefficient 0.1875 incorrect?
         Vin - ((reading * 0.1875) / 1000); // +/-6.144V with 32767 values
@@ -261,9 +262,12 @@ void ExecuteTemperature::_measureTemperature() {
 
 
     // TODO Remove HACK
-    if (element == 1)
-      executeParameter->currentValues[element] = 25 * 100;
+    if (peltier == 1) {
+      executeParameter->currentValues[peltier] = 25 * 100;
+    }
+    else {
+      executeParameter->currentValues[peltier] = temperature * 100;
+    }
 
-    executeParameter->currentValues[element] = temperature * 100;
   }
 }

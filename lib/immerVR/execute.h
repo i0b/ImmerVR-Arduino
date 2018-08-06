@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "hardware.h"
 
+#define EXECUTE_REFRESH_RATE 10
+
 typedef uint16_t intensity_t;
 typedef uint8_t i2cAddress_t;
 typedef uint16_t intervalMs_t;

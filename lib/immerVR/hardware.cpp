@@ -1,6 +1,16 @@
 #include "hardware.h"
 #include <Arduino.h>
 
+
+const String actuatorModeStrings[] = {
+  "idle",
+  "continuous",
+  "pulse",
+  "heartbeat",
+  "rain",
+  "dash"
+};
+
 void Hardware::begin() {
   _gain = GAIN_TWOTHIRDS; // +/-6.144V
   _conversionDelay = ADS1115_CONVERSIONDELAY;

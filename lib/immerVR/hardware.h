@@ -7,6 +7,8 @@
 /* for display: <U8g2lib.h> */
 
 typedef enum { VIBRATE, TEMPERATURE, EMS } moduleType_t;
+
+// CAREFUL! IF EDITED, DO NOT FORGET TO EDIT THE "actuatorModeStrings" IN HARDWARE.CPP
 typedef enum {
   IDLE,
   CONTINUOUS,
@@ -18,6 +20,7 @@ typedef enum {
   //SWIPE_LEFT_RIGHT,
 } actuationMode_t;
 
+extern const String actuatorModeStrings[];
 
 #define _ON (100)
 #define _OFF (0)

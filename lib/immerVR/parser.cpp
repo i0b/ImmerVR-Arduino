@@ -124,51 +124,33 @@ String Parser::parseCommand(String req) {
   if (root.containsKey("mode") && root["mode"].is<const char *>()) {
     String mode = root["mode"].as<String>();
 
-    if (mode == "idle") {
-      _modules[moduleId]->setMode(IDLE);
-      _modules[moduleId]->execute->executeParameter->updated = true;
-      #ifdef DEBUG
-      Serial.println("new mode: idle");
-      #endif
+    if (mode == actuatorModeStrings[IDLE]) {
+      _readMode = IDLE;
     }
-    else if (mode == "continuous") {
-      _modules[moduleId]->setMode(CONTINUOUS);
-      _modules[moduleId]->execute->executeParameter->updated = true;
-      #ifdef DEBUG
-      Serial.println("new mode: continuous");
-      #endif
+    else if (mode == actuatorModeStrings[CONTINUOUS]) {
+      _readMode = CONTINUOUS;
     }
-    else if (mode == "pulse") {
-      _modules[moduleId]->setMode(PULSE);
-      _modules[moduleId]->execute->executeParameter->updated = true;
-      #ifdef DEBUG
-      Serial.println("new mode: pulse");
-      #endif
+    else if (mode == actuatorModeStrings[PULSE]) {
+      _readMode = PULSE;
     }
-    else if (mode == "heartbeat") {
-      _modules[moduleId]->setMode(HEARTBEAT);
-      _modules[moduleId]->execute->executeParameter->updated = true;
-      #ifdef DEBUG
-      Serial.println("new mode: heartbeat");
-      #endif
+    else if (mode == actuatorModeStrings[HEARTBEAT]) {
+      _readMode = HEARTBEAT;
     }
-    else if (mode == "rain") {
-      _modules[moduleId]->setMode(RAIN);
-      _modules[moduleId]->execute->executeParameter->updated = true;
-      #ifdef DEBUG
-      Serial.println("new mode: rain");
-      #endif
+    else if (mode == actuatorModeStrings[RAIN]) {
+      _readMode = RAIN;
     }
-    else if (mode == "dash") {
-      _modules[moduleId]->setMode(DASH);
-      _modules[moduleId]->execute->executeParameter->updated = true;
-      #ifdef DEBUG
-      Serial.println("new mode: dash");
-      #endif
+    else if (mode == actuatorModeStrings[DASH]) {
+      _readMode = DASH;
     }
     else {
       return "ERROR: Invalide mode.";
     }
+
+    _modules[moduleId]->setMode(_readMode);
+    _modules[moduleId]->execute->executeParameter->updated = true;
+    #ifdef DEBUG
+    Serial.print("new mode: "); Serial.println(actuatorModeStrings[_readMode]);
+    #endif
   }
 
   return "OK";
