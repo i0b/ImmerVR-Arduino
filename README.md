@@ -2,18 +2,18 @@
 # Immersive Virtual Reality: Hardware Platform
 
 ## Hardware
-    microcontroller: lolin32 --- ESP32 based development board
-    module controller: PCA9685 based 16-chanel 12-bit PWM driver breakout
-    analog digital converter: ADS1115
+* microcontroller: lolin32 - ESP32 based development board
+* module controller: PCA9685 based 16-chanel 12-bit PWM driver breakout
+* analog digital converter: ADS1115
 
 ## Software
-    PlatformIO [website](https://platformio.org/ "PlatformIO homepage")
+PlatformIO [website](https://platformio.org/ "PlatformIO homepage")
 
 ## Dependecies
-    ArduinoJson
+ArduinoJson
 
 ## Initialization and execution
-    The library is to be included and initialized in the *main.cpp* file and modules are added with  the *addModule(ADDR, NUM_ELEM, MODULE_TYPE)* function. Inside the *main-loop* the library's *run()* method must be added.
+The library is to be included and initialized in the *main.cpp* file and modules are added with  the *addModule(ADDR, NUM_ELEM, MODULE_TYPE)* function. Inside the *main-loop* the library's *run()* method must be added.
 
 ## Commands
 ### Continuous
@@ -41,10 +41,10 @@ values - map for the actuation intensities
 #### Description
 Pulsing actuation with variable on-time, time between on sets and number of repetitions.
 #### Accepted parameter
-values - map for the actuators in the *on* condition
-onDurationMs - time the actuators will be *on*
-intervalMs - time between two pulses
-repetitions - number of repetitions
+* values - map for the actuators in the *on* condition
+* onDurationMs - time the actuators will be *on*
+* intervalMs - time between two pulses
+* repetitions - number of repetitions
 
 #### Example - Vibration
 ```json
@@ -65,9 +65,9 @@ repetitions - number of repetitions
 #### Description
 Actuation simulating the beating of a heart with two pulses and a variable pause between sets of actuations.
 #### Accepted parameter
-values - map for the actuators in the *on* condition
-onDuration - time the actuators will be *on*
-intervalMs - time between two pairs of beats
+* values - map for the actuators in the *on* condition
+* onDuration - time the actuators will be *on*
+* intervalMs - time between two pairs of beats
 
 #### Example - Vibration
 ```json
@@ -78,9 +78,9 @@ intervalMs - time between two pairs of beats
 #### Description
 Swiping actuation starting from a center equidistant linear motion left and right.
 #### Accepted parameter
-values - map for the actuators in the *on* condition
-onDuration - time the actuators will be *on* before continuing with the next state
-repetitions - number of repetitions
+* values - map for the actuators in the *on* condition
+* onDuration - time the actuators will be *on* before continuing with the next state
+* repetitions - number of repetitions
 
 #### Example - Vibration
 ```json
@@ -92,9 +92,9 @@ repetitions - number of repetitions
 #### Description
 Simulation of rain with random *drops* and variable actuation time and time between two actuations.
 #### Accepted parameter
-values - map for the actuators in the *on* condition
-onDuration - time the actuators will be *on*
-intervalMs - time until a new *drop* spawns
+* values - map for the actuators in the *on* condition
+* onDuration - time the actuators will be *on*
+* intervalMs - time until a new *drop* spawns
 
 #### Example - Vibration
 ```json
