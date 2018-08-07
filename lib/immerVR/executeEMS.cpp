@@ -31,12 +31,11 @@ void ExecuteEMS::setExecuteByMode(actuationMode_t mode) {
   } else if (mode == CONTINUOUS) {
     _timerCallback = &ExecuteEMS::_continuous;
   } else if (mode == PULSE) {
+    _pulseTimer = millis();
     _pulseActuateState = true;
     _timerCallback = &ExecuteEMS::_pulse;
   } else {
-#ifdef DEBUG
-    Serial.println("ERROR: mode not implemented");
-#endif // DEBUG
+    Serial.println("{ \"event\": \"set-mode\", \"status\": \"error\", \"message\": \"mode not implemented\" }");
     _timerCallback = &ExecuteEMS::_idle;
   }
 
@@ -141,7 +140,6 @@ void ExecuteEMS::_pulse() {
   }
 }
 
-
 void ExecuteEMS::_increaseOnTime() {
   _press(MODE);
   _press(MODE);
@@ -173,6 +171,7 @@ void ExecuteEMS::_setIntensity(value_t *values) {
     if (values != NULL) {
       value = values[element];
     }
+
     if ((value - executeParameter->currentValues[element]) > 0) {
       changed = true;
       if (element == 0) {

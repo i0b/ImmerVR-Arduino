@@ -81,7 +81,9 @@ void Module::setOnDurationMs(onDurationMs_t onDurationMs) {
 void Module::setMode(actuationMode_t mode) {
   // set to idle mode before continue -- this turns all actuators of first
   if (execute->executeParameter->mode != mode) {
-    execute->setIdle();
+    if (type != TEMPERATURE) {
+      execute->setIdle();
+    }
     execute->executeParameter->updated = true;
     execute->executeParameter->mode = mode;
     execute->setExecuteByMode(mode);

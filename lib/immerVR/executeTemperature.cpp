@@ -2,8 +2,6 @@
 #include <Arduino.h>
 #include <stdio.h>
 
-#define DEBUG
-
 ExecuteTemperature::ExecuteTemperature(Hardware *hardware, executeParameter_t *executeParameter) {
   this->executeParameter = executeParameter;
   this->_hardware = hardware;
@@ -26,18 +24,13 @@ void ExecuteTemperature::setExecuteByMode(actuationMode_t mode) {
   } else if (mode == PULSE) {
     _pulseTimer = millis();
     _pulseActuateState = true;
-    for (element_t element = 0; element > executeParameter->numberElements; element++) {
-      _pulseValues[element] = executeParameter->targetValues[element];
-    }
     _timerCallback = &ExecuteTemperature::_pulse;
   } else if (mode == RAIN) {
     _pulseTimer = millis();
     _pulseActuateState = true;
     _timerCallback = &ExecuteTemperature::_rain;
   } else {
-#ifdef DEBUG
-    Serial.println("ERROR: mode not implemented");
-#endif // DEBUG
+    Serial.println("{ \"event\": \"set-mode\", \"status\": \"error\", \"message\": \"mode not implemented\" }");
     _timerCallback = &ExecuteTemperature::_idle;
   }
 }
@@ -125,62 +118,71 @@ void ExecuteTemperature::_pulse() {
   }
 
   else {
-    executeParameter->updated = false;
     setIdle();
+    executeParameter->updated = false;
   }
+
+  _controlPeltiers();
 }
 
 void ExecuteTemperature::_rain() {
-  if (millis() >= _pulseTimer) {
-    if (_pulseActuateState == true) {
-      element_t onElement = random(0, executeParameter->numberElements);
-      executeParameter->targetValues[onElement] = 2000; // 20*C // cool
+/*
+unsigned long tickDiff = millis() - _lastTick;
 
-      _pulseTimer = millis() + executeParameter->onDurationMs;
-    _pulseActuateState = false;
+if (tickDiff > executeParameter->onDurationMs) { //executeParameter->intervalMs) {
+  _lastTick = millis();
+
+  for (element_t element = 0; element < executeParameter->numberElements;
+       element++) {
+    hardware->setPercent(executeParameter->address, 2 * element + 0, _OFF);
+    hardware->setPercent(executeParameter->address, 2 * element + 1, _OFF);
+  }
+
+  uint16_t newRainDropTimeMs = (60*1000) / executeParameter->parameter;
+
+  _lastActuated += tickDiff;
+
+  if (newRainDropTimeMs == 0) {
+    return;
+  }
+
+  while (_lastActuated >= newRainDropTimeMs) {
+  // here not exactly #newRainDrops many elements will be on (due to randomness)
+    element_t onElement = random(0, executeParameter->numberElements);
+
+    // cool
+    hardware->setPercent(executeParameter->address, 2 * onElement + 0, _ON);
+    hardware->setPercent(executeParameter->address, 2 * onElement + 1, _OFF);
+
+    _lastActuated -= newRainDropTimeMs;
+  }
+}
+*/
+
+  if (executeParameter->updated == true) {
+    for (element_t element = 0; element < executeParameter->numberElements; element++) {
+      _pulseValues[element] = executeParameter->targetValues[element];
     }
-    else {
-      for (element_t peltier = 0; peltier < executeParameter->numberElements; peltier++) {
-        executeParameter->targetValues[peltier] = 0;
+    executeParameter->updated = false;
+  }
+
+  if (millis() >= _pulseTimer + executeParameter->onDurationMs) {
+    // time for new raindrops
+    for (element_t element = 0; element < executeParameter->numberElements; element++) {
+      executeParameter->targetValues[element] = 0;
+    }
+
+    unsigned long timeSinceLastDrops = millis() - _pulseTimer;
+    element_t numberNewDrops = timeSinceLastDrops/executeParameter->intervalMs;
+
+    if (numberNewDrops > 0) {
+      for (element_t drops = 0; drops < numberNewDrops; drops++) {
+        element_t onElement = random(0, executeParameter->numberElements);
+        executeParameter->targetValues[onElement] = _pulseValues[onElement];
       }
-      _pulseTimer = millis() + executeParameter->intervalMs;
-      executeParameter->repetitions--;
-      _pulseActuateState = true;
+      _pulseTimer = millis();
     }
   }
-
-  /*
-  unsigned long tickDiff = millis() - _lastTick;
-
-  if (tickDiff > executeParameter->onDurationMs) { //executeParameter->intervalMs) {
-    _lastTick = millis();
-
-    for (element_t element = 0; element < executeParameter->numberElements;
-         element++) {
-      hardware->setPercent(executeParameter->address, 2 * element + 0, _OFF);
-      hardware->setPercent(executeParameter->address, 2 * element + 1, _OFF);
-    }
-
-    uint16_t newRainDropTimeMs = (60*1000) / executeParameter->parameter;
-
-    _lastActuated += tickDiff;
-
-    if (newRainDropTimeMs == 0) {
-      return;
-    }
-
-    while (_lastActuated >= newRainDropTimeMs) {
-    // here not exactly #newRainDrops many elements will be on (due to randomness)
-      element_t onElement = random(0, executeParameter->numberElements);
-
-      // cool
-      hardware->setPercent(executeParameter->address, 2 * onElement + 0, _ON);
-      hardware->setPercent(executeParameter->address, 2 * onElement + 1, _OFF);
-
-      _lastActuated -= newRainDropTimeMs;
-    }
-  }
-  */
 }
 
 void ExecuteTemperature::_controlPeltiers() {

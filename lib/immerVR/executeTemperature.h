@@ -15,7 +15,7 @@
 
 #define PELTIER_UPDATE_RATE_MS  50
 #define MIN_PELTIER_TEMPERATURE 20
-#define MAX_PELTIER_TEMPERATURE 40
+#define MAX_PELTIER_TEMPERATURE 35
 
 
 class ExecuteTemperature : public Execute {

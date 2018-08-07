@@ -8,7 +8,8 @@
 
 typedef enum { VIBRATE, TEMPERATURE, EMS } moduleType_t;
 
-// CAREFUL! IF EDITED, DO NOT FORGET TO EDIT THE "actuatorModeStrings" IN HARDWARE.CPP
+// CAREFUL!!! IF EDITED, DO NOT FORGET TO EDIT THE "actuatorModeStrings" IN HARDWARE.CPP
+// THEN ADD THE NEW MODE TO THE PARSER AT "if (root.containsKey("mode") && root["mode"].is<const char *>()) {...}"
 typedef enum {
   IDLE,
   CONTINUOUS,
@@ -19,6 +20,7 @@ typedef enum {
   //ROTATION,
   //SWIPE_LEFT_RIGHT,
 } actuationMode_t;
+// CAREFUL!!! IF EDITED, DO NOT FORGET TO EDIT THE "actuatorModeStrings" IN HARDWARE.CPP
 
 extern const String actuatorModeStrings[];
 

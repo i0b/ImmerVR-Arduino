@@ -13,11 +13,13 @@
 Parser::Parser(Module **modules, moduleId_t *numModules) {
   _modules = modules;
   _numModules = numModules;
+  _returnStringBuffer = new char[RETURN_STRING_BUFFER_SIZE];
 }
 
-String Parser::parseCommand(String req) {
+char* Parser::parseCommand(String req) {
   if (req.length() < 2) {
-    return "ERROR: no valid JSON string.";
+    snprintf(_returnStringBuffer, RETURN_STRING_BUFFER_SIZE, "{ \"event\": \"parse-command\", \"status\": \"error\", \"message\": \"no valid JSON string\" }");
+    return _returnStringBuffer;
   }
 
   DynamicJsonBuffer jsonBuffer;
@@ -27,28 +29,33 @@ String Parser::parseCommand(String req) {
   //Serial.println(req);
 
   if (!root.success()) {
-#ifdef DEBUG
+    #ifdef DEBUG
     Serial.println("parseObject() failed");
-#endif
-    return "ERROR: no valid JSON string.";
+    #endif
+
+    snprintf(_returnStringBuffer, RETURN_STRING_BUFFER_SIZE, "{ \"event\": \"parse-command\", \"status\": \"error\", \"message\": \"no valid JSON string\" }");
+    return _returnStringBuffer;
   }
 
   // get id from json and check if valid module id
   if (!root.containsKey("id") && !root["id"].is<unsigned short>()) {
-    return "ERROR: No module specified.";
+    snprintf(_returnStringBuffer, RETURN_STRING_BUFFER_SIZE, "{ \"event\": \"parse-command\", \"status\": \"error\", \"message\": \"no module specified\" }");
+    return _returnStringBuffer;
   }
 
   moduleId_t moduleId = (root["id"].as<String>().toInt());
 
   if (moduleId < 0 || moduleId >= *_numModules) {
-    return "ERROR: Invalide moduleId.";
+    snprintf(_returnStringBuffer, RETURN_STRING_BUFFER_SIZE, "{ \"event\": \"parse-command\", \"status\": \"error\", \"message\": \"module identifier must be in range 0-%d\" }", (*_numModules)-1);
+    return _returnStringBuffer;
   }
 
   if (_modules == 0 || _modules[moduleId] == 0) {
 #ifdef DEBUG
     Serial.println("module(s) not initialized");
 #endif
-    return "ERROR: internal error.";
+    snprintf(_returnStringBuffer, RETURN_STRING_BUFFER_SIZE, "{ \"event\": \"parse-command\", \"status\": \"error\", \"message\": \"internal error\" }");
+    return _returnStringBuffer;
   }
 
 // TODO
@@ -62,7 +69,8 @@ String Parser::parseCommand(String req) {
 
   if (root.containsKey("values") && root["values"].is<JsonArray &>()) {
     if (root["values"].size() != _modules[moduleId]->execute->executeParameter->numberElements) {
-      return "ERROR: number of given values does not match with number of actuators in module";
+      snprintf(_returnStringBuffer, RETURN_STRING_BUFFER_SIZE, "{ \"event\": \"parse-command\", \"status\": \"error\", \"message\": \"number of given values for module %d must be %d\" }", moduleId, _modules[moduleId]->execute->executeParameter->numberElements);
+      return _returnStringBuffer;
     }
 
     if (_modules[moduleId]->type == VIBRATE) {
@@ -73,7 +81,8 @@ String Parser::parseCommand(String req) {
           _modules[moduleId]->execute->executeParameter->updated = true;
         }
         else {
-          return "ERROR: some values are not within the valid range of 0-100";
+          snprintf(_returnStringBuffer, RETURN_STRING_BUFFER_SIZE, "{ \"event\": \"parse-command\", \"status\": \"error\", \"message\": \"some values are not within the valid range of 0-100\" }");
+          return _returnStringBuffer;
         }
       }
     } else if (_modules[moduleId]->type == TEMPERATURE) {
@@ -89,7 +98,8 @@ String Parser::parseCommand(String req) {
             _modules[moduleId]->execute->executeParameter->updated = true;
           }
           else {
-            return "ERROR: some temperatures are not in valid range";
+            snprintf(_returnStringBuffer, RETURN_STRING_BUFFER_SIZE, "{ \"event\": \"parse-command\", \"status\": \"error\", \"message\": \"some temperatures are not in valid range of %d-%d°C\" }", MIN_PELTIER_TEMPERATURE, MAX_PELTIER_TEMPERATURE);
+            return _returnStringBuffer;
           }
         }
       }
@@ -120,7 +130,6 @@ String Parser::parseCommand(String req) {
     _modules[moduleId]->setRepetitions(repetitions);
     _modules[moduleId]->execute->executeParameter->updated = true;
   }
-
   if (root.containsKey("mode") && root["mode"].is<const char *>()) {
     String mode = root["mode"].as<String>();
 
@@ -142,8 +151,17 @@ String Parser::parseCommand(String req) {
     else if (mode == actuatorModeStrings[DASH]) {
       _readMode = DASH;
     }
+
+    // ADD NEW MODE HERE!!!
+    //----------------------------------------
+
+
+    //----------------------------------------
+    // ADD NEW MODE HERE!!!
+
     else {
-      return "ERROR: Invalide mode.";
+      snprintf(_returnStringBuffer, RETURN_STRING_BUFFER_SIZE, "{ \"event\": \"parse-command\", \"status\": \"error\", \"message\": \"invalide mode\" }");
+      return _returnStringBuffer;
     }
 
     _modules[moduleId]->setMode(_readMode);
@@ -153,5 +171,6 @@ String Parser::parseCommand(String req) {
     #endif
   }
 
-  return "OK";
+  snprintf(_returnStringBuffer, RETURN_STRING_BUFFER_SIZE, "{ \"event\": \"parse-command\", \"status\": \"ok\", \"message\": \"module %d updated\" }", moduleId);
+  return _returnStringBuffer;
 }

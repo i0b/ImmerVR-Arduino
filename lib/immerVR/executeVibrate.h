@@ -27,7 +27,6 @@ void _idle();
 void _continuous();
 void _pulse();
 void _rain();
-// TODO heartbeat repetitions
 void _heartbeat();
 void _dash();
 };

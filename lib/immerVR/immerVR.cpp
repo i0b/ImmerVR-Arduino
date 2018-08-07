@@ -111,7 +111,7 @@ void ImmerVR::_printModuleStates() {
     {"id": 1, "type": "temperature", "values": [25,25,25,25], "measurments": [25,25,25,25]},
     {"id": 3, "type": "ems", "values": [1,1]}] }
   */
-        String output = "{ \"modules\": [";
+        String output = "{ \"event\": \"status-info\", \"modules\": [";
 
         for (int module = 0; module < _numModules; module++) {
           // id, type
@@ -129,13 +129,13 @@ void ImmerVR::_printModuleStates() {
             output += "\"ems\"";
           }
 
-          // values
+          // current values
           output += ", \"values\": [";
 
-          for (uint8_t value = 0; value < _modules[module]->execute->executeParameter->numberElements; value++) {
-            output += _modules[module]->execute->executeParameter->currentValues[value];
+          for (element_t element = 0; element < _modules[module]->execute->executeParameter->numberElements; element++) {
+            output += _modules[module]->execute->executeParameter->currentValues[element];
 
-            if (value < _modules[module]->execute->executeParameter->numberElements-1) {
+            if (element < _modules[module]->execute->executeParameter->numberElements-1) {
               output += ", ";
             }
             else {
@@ -143,8 +143,29 @@ void ImmerVR::_printModuleStates() {
             }
           }
 
-          // mode
+          if (_modules[module]->type == TEMPERATURE) {
+            // target values
+            output += ", \"target-values\": [";
+            for (element_t element = 0; element < _modules[module]->execute->executeParameter->numberElements; element++) {
+              value_t value = _modules[module]->execute->executeParameter->targetValues[element];
+              if (value == 0) {
+                output += "off";
+              }
+              else {
+                output += ((float)value)/100.0f;
+                output += "°C";
+              }
 
+              if (element < _modules[module]->execute->executeParameter->numberElements-1) {
+                output += ", ";
+              }
+              else {
+                output += "]";
+              }
+            }
+          }
+
+          // mode
           output += ", \"mode\": \"" + actuatorModeStrings[_modules[module]->execute->executeParameter->mode];
 
           output += "\" }";
@@ -207,19 +228,24 @@ void ImmerVR::run() {
            // when the function returns and 'client' object is detroyed
          */
         if (Serial.available() > 0) {
-                /*
-                      //Serial.print(Serial.available());
-                      char c = Serial.read();
-                      Serial.print(c);
+          /*
+          //Serial.print(Serial.available());
+          char c = Serial.read();
+          Serial.print(c);
 
-                      if (c == '\n') {
-                              _parser->parseCommand(_serialInput);
-                              _serialInput = "";
-                      }
-                      else {
-                              _serialInput += c;
-                      }
-                 */
-                _parser->parseCommand(Serial.readStringUntil('\n'));
+          if (c == '\n') {
+                  _parser->parseCommand(_serialInput);
+                  _serialInput = "";
+          }
+          else {
+                  _serialInput += c;
+          }
+          */
+
+          String command = Serial.readStringUntil('\n');
+
+          if (command.length() > 1) {
+            Serial.println(_parser->parseCommand(command));
+          }
         }
 }
