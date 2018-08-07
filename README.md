@@ -7,7 +7,7 @@
     analog digital converter: ADS1115
 
 ## Software
-    PlatformIO [website](https://platformio.org/)
+    PlatformIO [website](https://platformio.org/ "PlatformIO homepage")
 
 ## Dependecies
     ArduinoJson
@@ -17,9 +17,9 @@
 
 ## Commands
 ### Continuous
-####Description
+#### Description
 Simple constant actuation where all actuators can be set independently.
-####Accepted parameter
+#### Accepted parameter
 values - map for the actuation intensities
 
 #### Example - Vibration
@@ -38,9 +38,9 @@ values - map for the actuation intensities
 ```
 
 ### Pulse
-####Description
+#### Description
 Pulsing actuation with variable on-time, time between on sets and number of repetitions.
-####Accepted parameter
+#### Accepted parameter
 values - map for the actuators in the *on* condition
 onDurationMs - time the actuators will be *on*
 intervalMs - time between two pulses
@@ -62,9 +62,9 @@ repetitions - number of repetitions
 
 
 ### Heartbeat
-####Description
+#### Description
 Actuation simulating the beating of a heart with two pulses and a variable pause between sets of actuations.
-####Accepted parameter
+#### Accepted parameter
 values - map for the actuators in the *on* condition
 onDuration - time the actuators will be *on*
 intervalMs - time between two pairs of beats
@@ -75,9 +75,9 @@ intervalMs - time between two pairs of beats
 ```
 
 ### Dash
-####Description
+#### Description
 Swiping actuation starting from a center equidistant linear motion left and right.
-####Accepted parameter
+#### Accepted parameter
 values - map for the actuators in the *on* condition
 onDuration - time the actuators will be *on* before continuing with the next state
 repetitions - number of repetitions
@@ -89,9 +89,9 @@ repetitions - number of repetitions
 
 
 ### Rain
-####Description
+#### Description
 Simulation of rain with random *drops* and variable actuation time and time between two actuations.
-####Accepted parameter
+#### Accepted parameter
 values - map for the actuators in the *on* condition
 onDuration - time the actuators will be *on*
 intervalMs - time until a new *drop* spawns
