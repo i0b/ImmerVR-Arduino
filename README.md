@@ -7,7 +7,7 @@
 * analog digital converter: ADS1115
 
 ## Software
-PlatformIO [website](https://platformio.org/ "PlatformIO homepage")
+[PlatformIO](https://platformio.org/ "PlatformIO homepage")
 
 ## Dependecies
 ArduinoJson
@@ -20,7 +20,7 @@ The library is to be included and initialized in the *main.cpp* file and modules
 #### Description
 Simple constant actuation where all actuators can be set independently.
 #### Accepted parameter
-values - map for the actuation intensities
+* values - map for the actuation intensities
 
 #### Example - Vibration
 ```json
